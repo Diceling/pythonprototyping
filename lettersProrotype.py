@@ -5,6 +5,8 @@
 # Licensed under GNU GPL
 #########################
 
+
+
 class Spot:
 	
 	number = -1
@@ -20,7 +22,7 @@ class Spot:
 	
 
 	
-blacklist = [[],[],[],[]]
+blacklist = []
 
 allSpots = []
 
@@ -48,19 +50,50 @@ def getPosLocationsForSpot(currSpot):
 		if(spot.number == currSpot):
 			return spot.availableByWalking
 	
+
+def isOnBlacklist(moveNr, loc):
+	print "Blacklist", blacklist
+	for i in range(moveNr+1):	
+		print "BL-index: ", i
+		if loc in blacklist[i]:
+			return True
+	return False
+	
 def getAllPossibleLocations(nbrOfMoves, startingLocation, blacklist):
 	possibleCurrLocations = []
 	possibleNextLocations = []
 	currentSpot = startingLocation
 	
 	possibleCurrLocations.append(currentSpot)
-	for i in range(nbrOfMoves):
-		for currLoc in possibleCurrLocations:
-			currentSpot = currLoc
-			for location in getPosLocationsForSpot(currentSpot):
-				possibleNextLocations.append(location)
+	for move in range(nbrOfMoves):
+		print "Move", move
+		locIndex = 0
+		while locIndex < len(possibleCurrLocations):
+			currLoc = possibleCurrLocations[locIndex]
+			if(isOnBlacklist(move,currLoc)):
+				print "Removing", currLoc
+				possibleCurrLocations.remove(currLoc)
+				locIndex = locIndex-1
+				print "Still left in pos", possibleCurrLocations
+			else:
+				currentSpot = currLoc
+				print "Adding from: ", currLoc
+				for location in getPosLocationsForSpot(currentSpot):
+					possibleNextLocations.append(location)
+			locIndex= locIndex+1
 		possibleCurrLocations = possibleNextLocations
 		possibleNextLocations = []
-	print possibleCurrLocations
-	
+		print "as of move", move, possibleCurrLocations
+	print "Done with set", possibleCurrLocations
+
+print "New set ------------------------------"	
+blacklist.append([])
+getAllPossibleLocations(1,1,blacklist)
+blacklist.append([2])
+print "New set ------------------------------"	
+getAllPossibleLocations(2,1,blacklist)
+blacklist.append([6])
+getAllPossibleLocations(3,1,[])
+blacklist.append([7])
+print "New set ------------------------------"	
 getAllPossibleLocations(4,1,[])
