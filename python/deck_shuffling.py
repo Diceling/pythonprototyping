@@ -43,6 +43,25 @@ def riffle(_deck):
 			currentHalf = 1
 	return shuffledDeck
 
+def piling(_deck, nrOfpiles):
+	piles = []
+	deck = copy.deepcopy(_deck)
+	for p in range(0,nrOfpiles):
+		piles.append([])
+	currentPile = 0
+	while len(deck) > 0:
+		newPile = rand.randint(0,len(piles)-1)
+		while newPile == currentPile:
+			newPile = rand.randint(0,len(piles)-1)
+		currentPile = newPile
+		piles[currentPile].insert(0,deck.pop())
+	shuffledDeck = []
+	for p in piles:
+		print p
+	while len(piles) > 0:
+		shuffledDeck = piles.pop(rand.randint(0,len(piles)-1)) + shuffledDeck
+	return shuffledDeck
+
 def calculateRandomnessScore(_deck):
 	score = 0
 	for x in range(0, len(_deck)):
@@ -58,7 +77,7 @@ def calculateRandomnessScore(_deck):
 	
 deck =[]
 deck = getNumberedDeck()
-for x in range(0,7):
-	deck = riffle(copy.deepcopy(deck))
-	print calculateRandomnessScore(deck)
+
+deck = piling(copy.deepcopy(deck), 6)
+print calculateRandomnessScore(deck)
 print deck
