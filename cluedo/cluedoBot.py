@@ -15,9 +15,13 @@ class Player:
     def addCardToNotOwned(card):
         if card not in self.notOwnedCards:
             self.notOwnedCards.append(card)
+            return 1
+        return 0
     def addToOwnedCards(card):
         if card not in self.ownedCards:
             self.ownedCards.append(card)
+            return 1
+        return 0
     def cleanUp():
         for card in self.notOwnedCards:
             if card in self.potentialCards:
@@ -102,29 +106,38 @@ def newGuess(location, suspect, weapon, asker, shower, cardShown):
         players[x].addCardToNotOwned(weapon)
         players[x].cleanUp()
 
-def managePlayerCards():
+def managePlayerCards(l_updates):
+    updates = l_updates
     for x in range(0, len(players)):
         for y in range(0, len(players)):
             if x != y:
                 for card in players[x].ownedCards:
-                    players[y].addCardToNotOwned(card)
+                    updates = updates + players[y].addCardToNotOwned(card)
+    for player in players:
+        player.cleanUp()
+    return updates
 
-def manageGuesses():
+def manageGuesses(l_updates):
+    updates = l_updates
     for guess in guesses:
         if guess.cardShown == None:
             if guess.suspect in players[guess.shower].notOwnedCards and guess.weapon in players[guess.shower].notOwnedCards:
                 players[guess.shower].addToOwnedCards(guess.location)
                 cardShown = guess.location
+                updates= updates+1
 
             elif guess.suspect in players[guess.shower].notOwnedCards and guess.location in players[guess.shower].notOwnedCards:
                 players[guess.shower].addToOwnedCards(guess.weapon)
                 cardShown = guess.weapon
+                updates= updates+1
 
             elif guess.location in players[guess.shower].notOwnedCards and guess.weapon in players[guess.shower].notOwnedCards:
                 players[guess.shower].addToOwnedCards(guess.suspect)
                 cardShown = guess.suspect
-def updateGuiltyCheck():
-
+                updates= updates+1
+    return updates
+def updateGuiltyCheck(l_updates):
+    updates = l_updates
     for card in cardsMasterList:
         innocent = None
         if card not in innocentCards and card not in guiltyCards:
@@ -142,3 +155,44 @@ def updateGuiltyCheck():
                     break
             if guilty == True:
                 guiltyCards.append(card)
+
+
+addMorePlayers = True
+print "Enter first player (the one using the bot)."
+while addMorePlayers:
+    print "What is their name?"
+    name = raw_input()
+    print "How many cards do they have?"
+    nrOfCards = int(raw_input())
+    player = Player(nrOfCards,name)
+    players.append(player)
+    morePlayers = "HEH"
+    print "Would you like to add another player?"
+    while morePlayers not in ["Y", "y", "N", "n"]:
+        morePlayers = raw_input()
+        if morePlayers not in ["Y", "y", "N", "n"]:
+            print "Incorrect input, please use Y for yes and N for no"
+        elif morePlayers == "Y" or morePlayers == "y":
+            print "Player %d" %len(players)+1
+        else:
+            addMorePlayers = False
+
+stillPlaying = True
+while stillPlaying:
+    print "Enter a guess"
+    print "Who is asking?"
+    playerName = raw_input()
+    playerId = -1
+    index = 0
+    for player in players:
+        if player.name == playerName:
+            playerId = index
+            break
+    print "Who showed the card?"
+    playerName = raw_input()
+    playerId = -1
+    index = 0
+    for player in players:
+        if player.name == playerName:
+            playerId = index
+            break
