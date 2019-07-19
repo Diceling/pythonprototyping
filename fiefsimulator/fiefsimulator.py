@@ -1,6 +1,6 @@
 import random as rand
 
-availableIndustries = ["Farming", "Fishing", "Forest", "Livestock"]
+availableIndustries = ["Farming", "Fishing", "Forest", "Livestock", "Hunting"]
 ordinalNumbers = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth"]
 
 def printChoices(industries):
@@ -17,7 +17,8 @@ def handleInput(choice, fief):
             while newValue.isdigit() == False or int(newValue) < 0:
                 print "Please enter a numeric value greater than 0."
                 newValue = raw_input()
-            oakheart.changeIndustryQuality(availableIndustries[int(choice)-1],int(newValue))
+            points, cost = fief.changeIndustryQuality(availableIndustries[int(choice)-1],int(newValue))
+            print "That change cost: %d. You now have %d points left" %(cost, points)
             return True
         elif int(choice) == len(availableIndustries)+1:
             return False
@@ -47,7 +48,7 @@ def dieRoller(nrOfDice, sides, OB = False):
 class FiefdomFactory:
 
     def calculateForestArea(self, forestQuality):
-        self.forestArea = forestQuality*dieRoller(3,6,True)[0]*10
+        self.forestArea = forestQuality*dieRoller(3,6,True)*10
         return self.forestArea
     def calcNrOfEstates(self, rank):
         if rank == 1:
@@ -68,12 +69,15 @@ class FiefdomFactory:
     def buildEstates(self, rank):
         estates = []
         nrOfestates = self.calcNrOfEstates(rank)
-        print "You have %d estates in yoru fiefdom." %nrOfestates
+        print "You have %d estates in your fiefdom." %nrOfestates
         for i in range(nrOfestates):
             print "What would you like to name your %s estate" %ordinalNumbers[i]
             name = raw_input()
             estLand = self.calculateEstateLand()
-            self.buildVillages(self.calcNrOfVillages(), name)
+            villages = []
+            villages = self.buildVillages(self.calcNrOfVillages(), name)
+            estates.append(Estate(estLand,villages))
+        return estates
 
     def buildVillages(self,nrOfVillages, estateName):
         villages = []
@@ -90,8 +94,66 @@ class FiefdomFactory:
             land = self.calculateVillageLand(population)
             village = Village(name,int(population), int(indentured),int(land))
             villages.append(village)
-            print "Your %s village: " %ordinalNumbers[x]
+            print "%s %s village: " %(estateName, ordinalNumbers[x])
             village.printInfo()
+        return villages
+
+class FiefdomHandler:
+
+    def __init__(self):
+        print "Created Fiefdomhandler"
+
+    def divideEstateLand(self,fief):
+        totalEstateLand = 0
+        for x in fief.estates:
+            totalEstateLand = totalEstateLand + x.land
+        print "Your fief has a total of %d acres of estate land. This can be used for either farming och livestock. A third must be used for each, and it can be changed each year." %totalEstateLand
+        print "How much would you like to use for farming?"
+        farmLand = raw_input()
+        while farmLand.isdigit() == False or int(farmLand) > 2*totalEstateLand/3 or int(farmLand) < totalEstateLand/3:
+            print "Please use only digits and type a value bigger than %d and smaller than %d" %(totalEstateLand/3, (2*totalEstateLand/3))
+            farmLand = raw_input()
+        livestockLand = totalEstateLand-int(farmLand)
+        return int(farmLand),livestockLand
+    def decideDayLabours(self,fief):
+        print "Your farmers owe you a number of day labours. The amount of day labours you demand directly affects their ability to work properly, their loyalty towards you and their likelihood to rebel."
+        print "40 day labours per farmer is considered Kind, and lowers the difficulty of all farmer-related rolls by one step."
+        print "80 day labours per farmer is considered Fair, and does not affect the difficulty of farmer-related rolls"
+        print "120 day labours per farmer is considered Hard, and increases the difficulty of all farmer-related rolls by one step."
+        print "160 day labours per farmer is considered Harsh, and increases the difficulty of all farmer-related rolls by two step."
+        print "200 day labours per farmer is considered Cruel, and increases the difficulty of all farmer-related rolls by three step."
+        print "How many day labours will you demand of your farmers?"
+        labours = raw_input()
+        while labours.isdigit() == False or int(labours) > 200:
+            print "Please type a digit lower than 200."
+            labours = raw_input()
+        level = int(labours)/40-2
+        return int(labours), level
+
+    def calculatePotentialIncomes(self, fief):
+        taxes = 0
+        indenturedPayments = 0
+        ownFarming = fief.farmArea*fief.industries["Farming"]
+        ownLivestock = fief.livestockArea*fief.industries["Livestock"]
+        ownHunting = fief.industries["Hunting"]*fief.forestArea/10
+
+
+        for estate in fief.estates:
+
+            for village in estate.villages:
+                taxes = taxes+0.1*village.freeLand*0.5*fief.industries["Farming"]
+                indenturedPayments = indenturedPayments+0.25*village.indenturedLand*0.5*fief.industries["Livestock"]
+
+        incomes = {}
+        incomes["Indentured Villagers"] = indenturedPayments
+        incomes["Taxation"] = taxes
+        incomes["Estate Farming"] = ownFarming
+        incomes["Estate Livestock"] = ownLivestock
+        incomes["Hunting"] = ownHunting
+
+        return incomes
+
+
 
 
 
@@ -104,10 +166,15 @@ class Fiefdom:
         self.industries["Livestock"] = 1
         self.industries["Forest"] = 1
         self.industries["Fishing"] = 0
-        self.rank = 2 #noble rank 1 = Landed Knight 5 = King/similar
+        self.industries["Hunting"] = 1
+        self.rank = 1 #noble rank 1 = Landed Knight 5 = King/similar
         self.qualityPoints = 25
         self.forestArea = 0 #Acres
+        self.livestockArea = 0
+        self.farmArea = 0
         self.estates = []
+        self.farmerDifficulty = 0
+        self.totalDayLabours = 0
 
     def changeIndustryQuality(self, industry, newValue):
         cost = 0
@@ -116,7 +183,7 @@ class Fiefdom:
             for x in range(newValue,currValue,-1):
                 cost = cost+x
         else:
-            for x in range(currValue,newValue):
+            for x in range(currValue,newValue,-1):
                 cost = cost+x
             cost = cost*-1
 
@@ -131,9 +198,20 @@ class Fiefdom:
     def printIndustryQualities(self):
         for k,v in oakheart.industries.iteritems():
             print "%s:%d" % (k,v)
-    def calculateForestArea(self):
-        self.forestArea = self.industries["Forest"]*dieRoller(3,6,True)[0]*10
-        return self.forestArea
+    def setEstateLandUse(self, landUse):
+        self.farmArea = landUse[0]
+        self.livestockArea = landUse[1]
+
+    def calculateDayLabours(self, labourData):
+        self.totalDayLabours = labourData[0]*self.getNrOfVillagers()
+        self.farmerDifficulty= self.farmerDifficulty+labourData[1]
+
+    def getNrOfVillagers(self):
+        totalNrOfVillagers = 0
+        for est in self.estates:
+            for vill in est.villages:
+                totalNrOfVillagers = totalNrOfVillagers+ vill.indenturedPop+vill.freePop
+        return totalNrOfVillagers
 class Village:
 
     def __init__(self, name, population, indenturedPercent, land):
@@ -148,15 +226,23 @@ class Village:
 
 class Estate:
 
-    def __init__(self, estateLand):
-        self.villages = []
+    def __init__(self, estateLand, villages):
+        self.villages = villages
         self.land = estateLand
-        self.steward = [dieRoller(1,6)+12,dieRoller(1,6)+12]
+        self.steward = NPC()
+        self.steward.skills["Agriculture"] = dieRoller(1,6)+12
+        self.steward.skills["Animal Handling"] = dieRoller(1,6)+12
 
 
 
 factory = FiefdomFactory()
+handler = FiefdomHandler()
 oakheart = Fiefdom()
+
+class NPC:
+
+    def __init__(self):
+        self.skills = {}
 
 
 doingSetup = True
@@ -173,4 +259,14 @@ while doingSetup:
     doingSetup = handleInput(choice, oakheart)
     #doingSetup = False
 
+#BuildingEstate
 oakheart.estates = factory.buildEstates(oakheart.rank)
+oakheart.forestArea = factory.calculateForestArea(oakheart.industries["Forest"])
+
+#Initial Setup for first year
+oakheart.setEstateLandUse(handler.divideEstateLand(oakheart))
+oakheart.calculateDayLabours(handler.decideDayLabours(oakheart))
+incomes = handler.calculatePotentialIncomes(oakheart)
+print "Potential incomes from your fiefdom:"
+for k,v in incomes.iteritems():
+    print "%s: %s" %(k,v)
