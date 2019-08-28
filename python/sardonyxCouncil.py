@@ -10,14 +10,9 @@ nrOfSeats = 51
 
 remainingSeats = nrOfSeats
 owners = {
-	"carwelan": 3501,
-	"duncan": 120,
-	"celdorion": 140,
-	"donatella": 200,
-	"rowan": 210,
-	"nirwe": 52,
-	"edna": 102,
-	"marcella": 80
+	"builderchairwoman": 1201,
+	"eldorion": 801,
+	"treville": 400
 }
 
 while sum(owners.values()) < stocks:
@@ -40,11 +35,11 @@ for k in owners.keys():
 
 def calculateStockPower(stocks, seats):
 	s = seats
-	if s == 0:
-		s = 1
 	v = stocks
-
-	a = v/(s*math.sqrt(s*(s+1)))
+	divisor = (s*math.sqrt(s*(s+1)))
+	if divisor == 0:
+		divisor = 1
+	a = v/divisor
 	return a
 
 while remainingSeats > 0:
@@ -52,7 +47,6 @@ while remainingSeats > 0:
 	highestOwner = ""
 	for k,v in owners.iteritems():
 		power = calculateStockPower(v,seatAllocation[k])
-		print power, k
 		if power > highestStockPower:
 			highestStockPower = power
 			highestOwner = k
